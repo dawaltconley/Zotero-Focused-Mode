@@ -209,21 +209,26 @@ Toggles = {
     }
   },
 
-  toggleTabBar(doc) {
+  toggleTabBar(doc, hide) {
     try {
+      const forceState = hide !== undefined
+      const shouldHide = forceState ? hide : this.states.tabBar;
+
       const titleBar = doc.getElementById("zotero-title-bar");
       if (!titleBar) {
         this.log("Tab bar element not found");
         return;
       }
 
-      if (this.states.tabBar) {
+      if (shouldHide) {
         titleBar.style.display = "none";
       } else {
         titleBar.removeAttribute("style");
       }
 
-      this.states.tabBar = !this.states.tabBar;
+      if (!forceState) {
+        this.states.tabBar = !this.states.tabBar;
+      }
     } catch (e) {
       this.log(`Error toggling tab bar: ${e.message}`);
     }
@@ -351,8 +356,10 @@ Toggles = {
           'chromemargin',
           Zotero.isMac ? '0,-1,-1,-1' : '0,2,2,2'
         );
+        this.addMouseListener(doc);
       } else {
         doc.documentElement.classList.remove('fullscreen');
+        // remove mouse listener...
       }
 
       // Set OS-level fullscreen
@@ -482,6 +489,48 @@ Toggles = {
     // Initial update
     updateMenuItems();
     */
+  },
+
+  addMouseListener(doc) {
+    // doc.addEventListener('mousemove', this.mouseListener.bind(this), { passive: true });
+    const listenerElement = doc.querySelector('#browser');
+    const fullscreenElement = doc.querySelector('.fullscreen');
+
+    if (!listenerElement || !fullscreenElement) {
+      return null;
+    }
+
+    // // doesn't work
+    // listenerElement.addEventListener('mouseleave', () => {
+    //   this.toggleTabBar(doc, false);
+    //   this.toggleAnnotation(false);
+    //   this.log('mouse left!');
+    //   fullscreenElement.classList.remove('fullscreen');
+    // }, { passive: true });
+
+    const showListener = (e) => {
+      if (e.y < 1) {
+        this.toggleTabBar(doc, false);
+        this.toggleAnnotation(false);
+        fullscreenElement.classList.remove('fullscreen');
+        // doc.removeEventListener('mousemove', showListener);
+      } else {
+        this.toggleAnnotation(true);
+        this.toggleTabBar(doc, true);
+        fullscreenElement.classList.add('fullscreen');
+      }
+    }
+
+    listenerElement.addEventListener('mousemove', showListener, { passive: true });
+    this.log('added mouse event')
+  },
+
+  mouseListener(e) {
+    this.log(`listening ${e.y}`);
+    if (e.y === 0) {
+      this.log('exit!');
+      document.querySelector('.fullscreen').classList.remove('fullscreen');
+    }
   },
 
   addToWindow(window, manualPopup = false) {
@@ -725,6 +774,12 @@ Toggles = {
 
       const style = doc.createElement('style');
       style.id = 'fullscreen-style';
+      // #titlebar = file, edit, view, etc.
+      //  #main-menubar = file, edit, etc
+      // #zotero-title-bar = tabs
+      //  .zotero-toolbar = tab dropdown and update button
+      //    .zotero-tb-button = tab dropdown button
+      // 
       style.textContent = `
         .fullscreen { margin: 0; padding: 0; overflow: hidden; }
         .fullscreen #mainPane { width: 100vw; height: 100vh; }
