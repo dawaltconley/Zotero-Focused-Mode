@@ -359,8 +359,9 @@ Toggles = {
         this.addMouseListener(doc);
       } else {
         doc.documentElement.classList.remove('fullscreen');
-        // remove mouse listener...
+        this.removeMouseListener(doc);
       }
+      this.log(`listener length: ${this.registeredMouseListeners?.length}`);
 
       // Set OS-level fullscreen
       window.fullScreen = enteringFullscreen;
@@ -491,6 +492,8 @@ Toggles = {
     */
   },
 
+  registeredMouseListeners: [],
+
   addMouseListener(doc) {
     // doc.addEventListener('mousemove', this.mouseListener.bind(this), { passive: true });
     const listenerElement = doc.querySelector('#browser');
@@ -508,12 +511,12 @@ Toggles = {
     //   fullscreenElement.classList.remove('fullscreen');
     // }, { passive: true });
 
-    const showListener = (e) => {
+    const onMoveListener = (e) => {
       if (e.y < 1) {
         this.toggleTabBar(doc, false);
         this.toggleAnnotation(false);
         fullscreenElement.classList.remove('fullscreen');
-        // doc.removeEventListener('mousemove', showListener);
+        // doc.removeEventListener('mousemove', onMoveListener);
       } else {
         this.toggleAnnotation(true);
         this.toggleTabBar(doc, true);
@@ -521,17 +524,38 @@ Toggles = {
       }
     }
 
-    listenerElement.addEventListener('mousemove', showListener, { passive: true });
+    listenerElement.addEventListener('mousemove', onMoveListener, { passive: true });
     this.log('added mouse event')
+
+    this.registeredMouseListeners ??= [];
+    this.registeredMouseListeners.push({
+      doc,
+      handler: onMoveListener,
+    });
   },
 
-  mouseListener(e) {
-    this.log(`listening ${e.y}`);
-    if (e.y === 0) {
-      this.log('exit!');
-      document.querySelector('.fullscreen').classList.remove('fullscreen');
+  removeMouseListener(doc) {
+    if (!this.registeredMouseListeners) {
+      return false
+    }
+    for (let i = 0; i < this.registeredMouseListeners.length; i++) {
+      const listener = this.registeredMouseListeners[i];
+      if (listener.doc === doc && listener.handler) {
+        doc.removeMouseListener('mousemove', listener.handler);
+        this.registeredMouseListeners.splice(i, 1);
+        this.log(`removed mouse listener ${i}`);
+        break;
+      }
     }
   },
+
+  // mouseListener(e) {
+  //   this.log(`listening ${e.y}`);
+  //   if (e.y === 0) {
+  //     this.log('exit!');
+  //     document.querySelector('.fullscreen').classList.remove('fullscreen');
+  //   }
+  // },
 
   addToWindow(window, manualPopup = false) {
     try {
