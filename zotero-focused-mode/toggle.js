@@ -226,9 +226,7 @@ Toggles = {
         titleBar.removeAttribute("style");
       }
 
-      if (!forceState) {
-        this.states.tabBar = !this.states.tabBar;
-      }
+      this.states.tabBar = !shouldHide;
     } catch (e) {
       this.log(`Error toggling tab bar: ${e.message}`);
     }
@@ -237,6 +235,8 @@ Toggles = {
   toggleAnnotation(hide) {
     try {
       const forceState = hide !== undefined;
+      // Use the provided state or toggle based on current state
+      const shouldHide = forceState ? hide : this.states.annotationBar;
 
       Zotero.Reader._readers.forEach(reader => {
         if (!reader || !reader._iframeWindow) return;
@@ -244,9 +244,6 @@ Toggles = {
         const doc = reader._iframeWindow.document;
         const styleId = 'toggle-bars-reader-style';
         let style = doc.getElementById(styleId);
-
-        // Use the provided state or toggle based on current state
-        const shouldHide = forceState ? hide : this.states.annotationBar;
 
         if (shouldHide) {
           // Create or update style to hide elements
@@ -269,9 +266,7 @@ Toggles = {
         }
       });
 
-      if (!forceState) {
-        this.states.annotationBar = !this.states.annotationBar;
-      }
+      this.states.annotationBar = !shouldHide;
 
       this.log(`Annotation UI ${this.states.annotationBar ? 'visible' : 'hidden'}`);
     } catch (e) {
@@ -368,7 +363,7 @@ Toggles = {
       this.states.focused = enteringFullscreen;
 
       // Toggle UI elements
-      this.toggleTabBar(doc);
+      this.toggleTabBar(doc, enteringFullscreen);
       this.toggleAnnotation(enteringFullscreen);
       this.toggleContextPane(enteringFullscreen);
 
@@ -513,13 +508,21 @@ Toggles = {
 
     const onMoveListener = (e) => {
       if (e.y < 1) {
-        this.toggleTabBar(doc, false);
-        this.toggleAnnotation(false);
+        if (!this.states.tabBar) {
+          this.toggleTabBar(doc, false);
+        }
+        if (!this.states.annotationBar) {
+          this.toggleAnnotation(false);
+        }
         fullscreenElement.classList.remove('fullscreen');
         // doc.removeEventListener('mousemove', onMoveListener);
       } else {
-        this.toggleAnnotation(true);
-        this.toggleTabBar(doc, true);
+        if (this.states.tabBar) {
+          this.toggleTabBar(doc, true);
+        }
+        if (this.states.annotationBar) {
+          this.toggleAnnotation(true);
+        }
         fullscreenElement.classList.add('fullscreen');
       }
     }
@@ -531,6 +534,7 @@ Toggles = {
     this.registeredMouseListeners.push({
       doc,
       handler: onMoveListener,
+      target: listenerElement,
     });
   },
 
@@ -541,7 +545,7 @@ Toggles = {
     for (let i = 0; i < this.registeredMouseListeners.length; i++) {
       const listener = this.registeredMouseListeners[i];
       if (listener.doc === doc && listener.handler) {
-        doc.removeMouseListener('mousemove', listener.handler);
+        listener.target.removeEventListener('mousemove', listener.handler);
         this.registeredMouseListeners.splice(i, 1);
         this.log(`removed mouse listener ${i}`);
         break;
