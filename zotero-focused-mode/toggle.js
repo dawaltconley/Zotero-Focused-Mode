@@ -540,7 +540,6 @@ Toggles = {
   registeredMouseListeners: new Map(),
 
   addMouseListener(doc) {
-    const MENU_CHANGE_DELAY = 300;
     const listenerElement = doc.querySelector('#browser');
     const fullscreenElement = doc.querySelector('.fullscreen');
 
@@ -563,7 +562,7 @@ Toggles = {
           this.toggleAnnotation(false);
         }
         fullscreenElement.classList.remove('fullscreen');
-      }, MENU_CHANGE_DELAY);
+      }, 50);
     };
 
     let hideMenuItemsTimeout = 0;
@@ -581,13 +580,13 @@ Toggles = {
           this.toggleAnnotation(true);
         }
         fullscreenElement.classList.add('fullscreen');
-      }, MENU_CHANGE_DELAY);
+      }, 150);
     };
 
     const onMoveListener = (e) => {
       if (e.y < 1) {
         showMenuItems();
-      } else {
+      } else if (e.y > 50) {
         hideMenuItems();
       }
     }
@@ -599,7 +598,6 @@ Toggles = {
 
     listenerElement.addEventListener('mousemove', onMoveListener, { passive: true });
     listenerElement.addEventListener('mouseleave', onLeaveListener, { passive: true });
-    this.log('added mouse event')
 
     this.registeredMouseListeners ??= new Map();
     this.registeredMouseListeners.set(doc, [
@@ -612,6 +610,7 @@ Toggles = {
         target: listenerElement,
       }
     ]);
+    this.log('added fullscreen mouse listeners');
   },
 
   removeMouseListener(doc) {
